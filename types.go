@@ -1,6 +1,9 @@
 package main
 
-import "time"
+import (
+	"fmt"
+	"time"
+)
 
 type HookMessage struct {
 	Version           string  `json:"version"`
@@ -27,3 +30,18 @@ type Alert struct {
 
 // KV is a set of key/value string pairs.
 type KV map[string]string
+
+type SlackImage struct {
+	Url   string `json:"url"`
+	Title string `json:"title"`
+}
+
+type PlotExpr struct {
+	Formula  string
+	Operator string
+	Level    float64
+}
+
+func (expr PlotExpr) String() string {
+	return fmt.Sprintf("%s %s %.2f", expr.Formula, expr.Operator, expr.Level)
+}

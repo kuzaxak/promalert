@@ -13,11 +13,12 @@ message_template: |
 
   :chart_with_upwards_trend: *<{{ .GeneratorURL }}|Graph>*
   {{- if .Labels.runbook }} :notebook: *<{{ .Labels.runbook }}|Runbook>*{{ end }}
+  {{- if .Annotations.runbook_url }} :notebook: *<{{ .Annotations.runbook_url }}|Runbook>*{{ end }}
 
   *Alert:* {{ if .Annotations.title }}{{ .Annotations.title }}{{ end }}{{ if .Annotations.summary }}{{ .Annotations.summary }}{{ end }}
   {{ if .Labels.severity }}*Severity:*  `{{ .Labels.severity }}`{{ end }}
   {{ if .Annotations.message }}*Message:*  {{ .Annotations.message }}{{ end }}
-  *Description:* {{ .Annotations.description }}
+  {{ if .Annotations.description }}*Description:* {{ .Annotations.description }}{{ end }}
   *Details:*
     {{ range $key, $value := .Labels }} • {{ $key }}: {{ $value }}
     {{ end }}

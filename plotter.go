@@ -7,6 +7,7 @@ import (
 	"log"
 	"regexp"
 	"strconv"
+	"time"
 
 	"github.com/prometheus/common/model"
 	"gonum.org/v1/plot"
@@ -19,7 +20,53 @@ import (
 // Only show important part of metric name
 var labelText = regexp.MustCompile("{(.*)}")
 
-func Plot(metrics model.Matrix, level float64, direction string) (io.WriterTo, error) {
+func Plot(expr PlotExpr, queryTime time.Time, duration, resolution time.Duration, prometheusUrl string, alert Alert) io.WriterTo {
+	log.Printf("Querying Prometheus %s", expr.Formula)
+	metrics, err := Metrics(
+		prometheusUrl,
+		expr.Formula,
+		queryTime,
+		duration,
+		resolution,
+	)
+	fatal(err, "failed to get metrics")
+
+	var selectedMetrics model.Matrix
+	var founded bool
+	for _, metric := range metrics {
+		log.Printf("Metric fetched: %v", metric.Metric)
+		founded = false
+		for label, value := range metric.Metric {
+			if originValue, ok := alert.Labels[string(label)]; ok {
+				if originValue == string(value) {
+					founded = true
+				} else {
+					founded = false
+					break
+				}
+			}
+		}
+
+		if founded {
+			log.Printf("Best match founded: %v", metric.Metric)
+			selectedMetrics = model.Matrix{metric}
+			break
+		}
+	}
+
+	if !founded {
+		log.Printf("Best match not founded, use entire dataset. Labels to search: %v", alert.Labels)
+		selectedMetrics = metrics
+	}
+
+	log.Printf("Creating plot: %s", alert.Annotations["summary"])
+	plottedMetric, err := PlotMetric(selectedMetrics, expr.Level, expr.Operator)
+	fatal(err, "failed to create plot")
+
+	return plottedMetric
+}
+
+func PlotMetric(metrics model.Matrix, level float64, direction string) (io.WriterTo, error) {
 	p, err := plot.New()
 	if err != nil {
 		return nil, fmt.Errorf("failed to create new plot: %v", err)
@@ -89,7 +136,7 @@ func Plot(metrics model.Matrix, level float64, direction string) (io.WriterTo, e
 
 	var polygonPoints plotter.XYs
 
-	if direction == "LE" {
+	if direction == "<" {
 		polygonPoints = plotter.XYs{{X: p.X.Min, Y: level}, {X: p.X.Max, Y: level}, {X: p.X.Max, Y: p.Y.Min}, {X: p.X.Min, Y: p.Y.Min}}
 	} else {
 		polygonPoints = plotter.XYs{{X: p.X.Min, Y: level}, {X: p.X.Max, Y: level}, {X: p.X.Max, Y: p.Y.Max}, {X: p.X.Min, Y: p.Y.Max}}
