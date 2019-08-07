@@ -86,6 +86,8 @@ func webhook(w http.ResponseWriter, r *http.Request) {
 			}
 		}
 
+		log.Printf("Querying Time %v Duration: %v", queryTime, duration)
+
 		metrics, err := Metrics(
 			viper.GetString("prometheus_url"),
 			alertFormula,
@@ -94,11 +96,13 @@ func webhook(w http.ResponseWriter, r *http.Request) {
 			time.Duration(viper.GetInt64("metric_resolution")),
 		)
 		fatal(err, "failed to get metrics")
+		log.Printf("Metrics fetched: %v", metrics)
 
 		var selectedMetrics model.Matrix
+		var founded bool
 
 		for _, metric := range metrics {
-			founded := false
+			founded = false
 			for label, value := range metric.Metric {
 				if originValue, ok := alert.Labels[string(label)]; ok {
 					if originValue == string(value) {
@@ -111,19 +115,27 @@ func webhook(w http.ResponseWriter, r *http.Request) {
 			}
 
 			if founded {
+				log.Printf("Best match founded: %v", metric.Metric)
 				selectedMetrics = model.Matrix{metric}
 				break
 			}
 		}
 
+		if !founded {
+			log.Printf("Best match not founded, use entire dataset. Labels to search: %v", alert.Labels)
+			selectedMetrics = metrics
+		}
+
 		// Plot
-		log.Printf("Creating plot %s", alert.Annotations["summary"])
+		log.Printf("Creating plot: %s", alert.Annotations["summary"])
 		plot, err := Plot(selectedMetrics, alertLevel, alertOperator)
 		fatal(err, "failed to create plot")
 
 		publicURL, err := UploadFile(viper.GetString("s3_bucket"), viper.GetString("s3_region"), plot)
+		fatal(err, "failed to upload")
+		log.Printf("Graph uploaded, URL: %s", publicURL)
 
-		_, _, err = SlackSendAlertMessage(
+		respChannel, respTimestamp, err := SlackSendAlertMessage(
 			alert,
 			viper.GetString("slack_token"),
 			viper.GetString("slack_channel"),
@@ -131,6 +143,7 @@ func webhook(w http.ResponseWriter, r *http.Request) {
 			viper.GetString("message_template"),
 		)
 		fatal(err, "failed to send slack message")
+		log.Printf("Slack message sended, channel: %s thread: %s", respChannel, respTimestamp)
 	}
 
 	w.Header().Set("Content-Type", "application/json")

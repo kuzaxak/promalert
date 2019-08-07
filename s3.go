@@ -14,8 +14,6 @@ import (
 )
 
 func UploadFile(bucket, region string, plot io.WriterTo) (string, error) {
-	// get the file size and read
-	// the file content into a buffer
 	s := session.Must(session.NewSession(&aws.Config{Region: aws.String(region)}))
 	_, err := s.Config.Credentials.Get()
 
@@ -38,8 +36,9 @@ func UploadFile(bucket, region string, plot io.WriterTo) (string, error) {
 		return "", fmt.Errorf("failed to write plot to file: %v", err)
 	}
 
+	// get the file size and read
+	// the file content into a buffer
 	fileInfo, _ := f.Stat()
-
 	size := fileInfo.Size()
 	buffer := make([]byte, size)
 	_, err = f.Seek(0, io.SeekStart)
@@ -48,19 +47,13 @@ func UploadFile(bucket, region string, plot io.WriterTo) (string, error) {
 	// create a unique file name for the file
 	tempFileName := "pictures/" + bson.NewObjectId().Hex() + ".png"
 
-	// config settings: this is where you choose the bucket,
-	// filename, content-type and storage class of the file
-	// you're uploading
 	_, err = s3.New(s).PutObject(&s3.PutObjectInput{
 		Bucket:        aws.String(bucket),
 		Key:           aws.String(tempFileName),
-		ACL:           aws.String("public-read"), // could be private if you want it to be access by only authorized users
+		ACL:           aws.String("public-read"),
 		Body:          bytes.NewReader(buffer),
 		ContentLength: aws.Int64(int64(size)),
 		ContentType:   aws.String(http.DetectContentType(buffer)),
-		//ContentDisposition: aws.String("inline"),
-		//ServerSideEncryption: aws.String("AES256"),
-		//StorageClass:         aws.String("INTELLIGENT_TIERING"),
 	})
 	if err != nil {
 		return "", err
