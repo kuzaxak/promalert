@@ -21,7 +21,7 @@ func SlackSendAlertMessage(alert Alert, token, channel, publicURL, message_templ
 		return "", "", err
 	}
 
-	textBlock := slack.NewTextBlockObject("plain_text", alert.Annotations["summary"], false, false)
+	textBlock := slack.NewTextBlockObject("plain_text", alert.Labels["alertname"], false, false)
 	textBlockObj := slack.NewTextBlockObject(
 		"mrkdwn",
 		tpl.String(),

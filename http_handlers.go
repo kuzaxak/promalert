@@ -8,6 +8,7 @@ import (
 	"github.com/spf13/viper"
 	"log"
 	"net/http"
+	"net/http/httputil"
 	"net/url"
 	"strconv"
 	"time"
@@ -18,6 +19,16 @@ func healthz(w http.ResponseWriter, r *http.Request) {
 }
 
 func webhook(w http.ResponseWriter, r *http.Request) {
+	if viper.GetBool("debug") {
+		// Save a copy of this request for debugging.
+		requestDump, err := httputil.DumpRequest(r, true)
+		if err != nil {
+			fmt.Println(err)
+		}
+		log.Printf("New request")
+		fmt.Println(string(requestDump))
+	}
+
 	dec := json.NewDecoder(r.Body)
 	defer r.Body.Close()
 
@@ -76,13 +87,13 @@ func webhook(w http.ResponseWriter, r *http.Request) {
 
 		if alert.StartsAt.Second() > alert.EndsAt.Second() {
 			queryTime = alert.StartsAt
-			duration = time.Minute * 10
+			duration = time.Minute * 20
 		} else {
 			queryTime = alert.EndsAt
 			duration = queryTime.Sub(alert.StartsAt)
 
-			if duration < time.Minute*10 {
-				duration = time.Minute * 10
+			if duration < time.Minute*20 {
+				duration = time.Minute * 20
 			}
 		}
 
@@ -96,12 +107,12 @@ func webhook(w http.ResponseWriter, r *http.Request) {
 			time.Duration(viper.GetInt64("metric_resolution")),
 		)
 		fatal(err, "failed to get metrics")
-		log.Printf("Metrics fetched: %v", metrics)
 
 		var selectedMetrics model.Matrix
 		var founded bool
 
 		for _, metric := range metrics {
+			log.Printf("Metric fetched: %v", metric.Metric)
 			founded = false
 			for label, value := range metric.Metric {
 				if originValue, ok := alert.Labels[string(label)]; ok {
