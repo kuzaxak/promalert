@@ -65,3 +65,6 @@ To submit a bug report use the GitHub bug tracker for the project:
 
 ## License
 
+GNU Lesser General Public License v3.0
+
+See [LICENSE](LICENSE) to see the full text.
