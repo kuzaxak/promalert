@@ -14,7 +14,7 @@ RUN CGO_ENABLED=0 GOOS=linux go build -a -installsuffix nocgo -o /app .
 FROM alpine
 
 COPY --from=builder /app ./
-COPY config.yaml ./
+COPY config.example.yaml ./config.yaml
 
 RUN apk add --no-cache ca-certificates && \
     update-ca-certificates
