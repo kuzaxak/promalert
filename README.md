@@ -43,14 +43,36 @@ Environment variables prefix: `PROMALERT_`
 | `message_template`  | Slack message template. Go template syntax   | [`config.example.yaml`](config.example.yaml#L11) |
 
 ### AWS
-AWS credentials parsed by [aws-go-client](https://github.com/aws/aws-sdk-go) in the following [order](https://docs.aws.amazon.com/sdk-for-go/v1/developer-guide/configuring-sdk.html):
+AWS credentials parsed by [aws-go-client](https://github.com/aws/aws-sdk-go) in the following [order](https://github.com/aws/aws-sdk-go#configuring-credentials):
 1. Environment variables.
 1. Shared credentials file.
 1. If your application is running on an Amazon EC2 instance, IAM role for Amazon EC2.
 
 ### Message templating
 
-> Coming soon
+Template applies per alert in group. Data in the template `.` = [Alert](types.go#L21)
+
+Default message template: 
+```gotemplate
+*[{{ .Status | toUpper }}]* {{ .Labels.alertname }}
+
+:chart_with_upwards_trend: *<{{ .GeneratorURL }}|Graph>*
+{{- if .Labels.runbook }} :notebook: *<{{ .Labels.runbook }}|Runbook>*{{ end }}
+{{- if .Annotations.runbook_url }} :notebook: *<{{ .Annotations.runbook_url }}|Runbook>*{{ end }}
+
+*Alert:* {{ if .Annotations.title }}{{ .Annotations.title }}{{ end }}{{ if .Annotations.summary }}{{ .Annotations.summary }}{{ end }}
+{{ if .Labels.severity }}*Severity:*  `{{ .Labels.severity }}`{{ end }}
+{{ if .Annotations.message }}*Message:*  {{ .Annotations.message }}{{ end }}
+{{ if .Annotations.description }}*Description:* {{ .Annotations.description }}{{ end }}
+*Details:*
+  {{ range $key, $value := .Labels }} • {{ $key }}: {{ $value }}
+  {{ end }}
+```
+
+Rendered message:
+
+![Demo Message](images/default_message.png)
+
 
 ## Build 
 ```
