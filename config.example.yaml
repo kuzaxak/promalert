@@ -1,0 +1,23 @@
+---
+#slack_token: <bot_token>>
+#slack_channel: <channel_name>
+#prometheus_url: <prom_url>
+#s3_bucket: <s3_bucket_name>
+#s3_region: eu-west-1
+
+http_port: 8080
+metric_resolution: 100
+
+message_template: |
+  *[{{ .Status | toUpper }}]* {{ .Labels.alertname }}
+
+  :chart_with_upwards_trend: *<{{ .GeneratorURL }}|Graph>*
+  {{- if .Labels.runbook }} :notebook: *<{{ .Labels.runbook }}|Runbook>*{{ end }}
+
+  *Alert:* {{ if .Annotations.title }}{{ .Annotations.title }}{{ end }}{{ if .Annotations.summary }}{{ .Annotations.summary }}{{ end }}
+  {{ if .Labels.severity }}*Severity:*  `{{ .Labels.severity }}`{{ end }}
+  {{ if .Annotations.message }}*Message:*  {{ .Annotations.message }}{{ end }}
+  *Description:* {{ .Annotations.description }}
+  *Details:*
+    {{ range $key, $value := .Labels }} • {{ $key }}: {{ $value }}
+    {{ end }}
