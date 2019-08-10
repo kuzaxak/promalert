@@ -16,6 +16,7 @@ func (alert Alert) Hash() string {
 		"labels": alert.Labels,
 	}, nil)
 	fatal(err, "Hash cant be calculated")
+	log.Printf("Hash calculated: %d", hash)
 
 	return strconv.FormatUint(hash, 10)
 }

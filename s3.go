@@ -11,6 +11,8 @@ import (
 	"io/ioutil"
 	"net/http"
 	"os"
+	"strconv"
+	"time"
 )
 
 func UploadFile(bucket, region string, plot io.WriterTo) (string, error) {
@@ -45,7 +47,7 @@ func UploadFile(bucket, region string, plot io.WriterTo) (string, error) {
 	_, err = f.Read(buffer)
 
 	// create a unique file name for the file
-	tempFileName := "pictures/" + bson.NewObjectId().Hex() + ".png"
+	tempFileName := "pictures/" + bson.NewObjectId().Hex() + "_" + strconv.FormatInt(time.Now().Unix(), 10) + ".png"
 
 	_, err = s3.New(s).PutObject(&s3.PutObjectInput{
 		Bucket:        aws.String(bucket),
