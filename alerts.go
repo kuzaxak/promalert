@@ -13,8 +13,7 @@ import (
 
 func (alert Alert) Hash() string {
 	hash, err := hashstructure.Hash(map[string]KV{
-		"labels":      alert.Labels,
-		"annotations": alert.Annotations,
+		"labels": alert.Labels,
 	}, nil)
 	fatal(err, "Hash cant be calculated")
 
