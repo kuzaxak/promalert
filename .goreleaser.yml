@@ -1,0 +1,39 @@
+project_name: promalert
+before:
+  hooks:
+    - dep ensure
+builds:
+  - env:
+      - CGO_ENABLED=0
+    goarch:
+      - amd64
+    goos:
+      - linux
+      - darwin
+archives:
+  - replacements:
+      darwin: Darwin
+      linux: Linux
+      windows: Windows
+      386: i386
+      amd64: x86_64
+    files:
+      - README.md
+      - LICENSE
+      - images/*.png
+checksum:
+  name_template: 'checksums.txt'
+signs:
+  - artifacts: all
+    args: ["-u","kuzaxak.tech@gmail.com", "--output", "${signature}", "--detach-sign","${artifact}"]
+snapshot:
+  name_template: "{{ .Tag }}-next"
+
+
+changelog:
+  sort: asc
+  filters:
+    exclude:
+      - '^docs:'
+      - '^test:'
+      - '^images:'

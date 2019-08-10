@@ -550,6 +550,7 @@
     "github.com/prometheus/client_golang/api/prometheus/v1",
     "github.com/prometheus/common/model",
     "github.com/prometheus/prometheus/promql",
+    "github.com/spf13/cast",
     "github.com/spf13/viper",
     "gonum.org/v1/plot",
     "gonum.org/v1/plot/palette/brewer",
