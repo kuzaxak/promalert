@@ -4,6 +4,20 @@ Yet another [Prometheus](https://prometheus.io/) Alertmanager webhook processor 
 ## How it works 
 Receive webhook from Alertmanager, draw images from alert expression, upload pictures to S3 bucket, generate public links, send a notification to Slack. 
 
+### Message logic
+
+Post the new message in case when we can find a reference in the history. 
+
+Otherwise, based on the status of the message, we apply the following logic:
+
+_Status = Firing_
+
+Post full message to thread with broadcasting. Set refiring footer to last known firing message. Store link to this message in memory (next resolving updates will edit this message).
+
+_Status = Resolved_
+
+Post short message (header + images) to thread. Update footer of last fired message. 
+
 ## Installation
 
 ### Helm chart
@@ -35,12 +49,14 @@ Environment variables prefix: `PROMALERT_`
 
 *Additional params:*
 
-| Parameter           | Description                                  | Default                                          |
-|:--------------------|:---------------------------------------------|:-------------------------------------------------|
-| `http_port`         | HTTP port                                    | `8080`                                           |
-| `metric_resolution` | Amount of point on the graph                 | `100`                                            |
-| `debug`             | Verbose log output. Dump HTTP request to log | `false`                                          |
-| `message_template`  | Slack message template. Go template syntax   | [`config.example.yaml`](config.example.yaml#L11) |
+| Parameter           | Description                                       | Default                                          |
+|:--------------------|:--------------------------------------------------|:-------------------------------------------------|
+| `http_port`         | HTTP port                                         | `8080`                                           |
+| `metric_resolution` | Amount of point on the graph                      | `100`                                            |
+| `debug`             | Verbose log output. Dump HTTP request to log      | `false`                                          |
+| `message_template`  | Slack message template. Go template syntax        | [`config.example.yaml`](config.example.yaml#L18) |
+| `header_template`   | Slack message header template. Go template syntax | [`config.example.yaml`](config.example.yaml#L11) |
+| `footer_template`   | Slack message footer template. Go template syntax | [`config.example.yaml`](config.example.yaml#L15) |
 
 ### AWS
 AWS credentials parsed by [aws-go-client](https://github.com/aws/aws-sdk-go) in the following [order](https://github.com/aws/aws-sdk-go#configuring-credentials):
@@ -52,21 +68,38 @@ AWS credentials parsed by [aws-go-client](https://github.com/aws/aws-sdk-go) in 
 
 Template applies per alert in group. Data in the template `.` = [Alert](types.go#L21)
 
+Available functions:
+
+| Func       | Arguments           | Description              | Example                           |
+|:-----------|:--------------------|:-------------------------|:----------------------------------|
+| toUpper    | string              | Format text to Uppercase | `{{ .Status | toUpper }}`         |
+| dateFormat | format string, time | Format date/time         | `{{ dateFormat "15:04:05" now }}` |
+| now        |                     | Retrieve current time    | `{{  now.String }}`               |
+
 Default message template: 
 ```gotemplate
-*[{{ .Status | toUpper }}]* {{ .Labels.alertname }}
+  :chart_with_upwards_trend: *<{{ .GeneratorURL }}|Graph>*
+  {{- if .Labels.runbook }} :notebook: *<{{ .Labels.runbook }}|Runbook>*{{ end }}
+  {{- if .Annotations.runbook_url }} :notebook: *<{{ .Annotations.runbook_url }}|Runbook>*{{ end }}
 
-:chart_with_upwards_trend: *<{{ .GeneratorURL }}|Graph>*
-{{- if .Labels.runbook }} :notebook: *<{{ .Labels.runbook }}|Runbook>*{{ end }}
-{{- if .Annotations.runbook_url }} :notebook: *<{{ .Annotations.runbook_url }}|Runbook>*{{ end }}
+  *Alert:* {{ if .Annotations.title }}{{ .Annotations.title }}{{ end }}{{ if .Annotations.summary }}{{ .Annotations.summary }}{{ end }}
+  {{ if .Labels.severity }}*Severity:*  `{{ .Labels.severity }}`{{ end }}
+  {{ if .Annotations.message }}*Message:*  {{ .Annotations.message }}{{ end }}
+  {{ if .Annotations.description }}*Description:* {{ .Annotations.description }}{{ end }}
+  *Details:*
+    {{ range $key, $value := .Labels }} • {{ $key }}: {{ $value }}
+    {{ end }}
+```
 
-*Alert:* {{ if .Annotations.title }}{{ .Annotations.title }}{{ end }}{{ if .Annotations.summary }}{{ .Annotations.summary }}{{ end }}
-{{ if .Labels.severity }}*Severity:*  `{{ .Labels.severity }}`{{ end }}
-{{ if .Annotations.message }}*Message:*  {{ .Annotations.message }}{{ end }}
-{{ if .Annotations.description }}*Description:* {{ .Annotations.description }}{{ end }}
-*Details:*
-  {{ range $key, $value := .Labels }} • {{ $key }}: {{ $value }}
-  {{ end }}
+Header template:
+```gotemplate
+  *{{ .Labels.alertname }}*
+  [Status]: {{if eq .Status "firing" }}:fire::fire::fire:{{else}}:white_check_mark::white_check_mark::white_check_mark:{{ end }}
+```
+
+Footer template:
+```gotemplate
+  {{if eq .Status "firing" }}:fire: Refired{{else}}:white_check_mark: Resolved{{ end }} {{ dateFormat "15:04:05" now }}
 ```
 
 Rendered message:

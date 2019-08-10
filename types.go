@@ -2,6 +2,7 @@ package main
 
 import (
 	"fmt"
+	"github.com/nlopes/slack"
 	"time"
 )
 
@@ -19,14 +20,24 @@ type HookMessage struct {
 
 // Alert holds one alert for notification templates.
 type Alert struct {
-	Status       string    `json:"status"`
-	Labels       KV        `json:"labels"`
-	Annotations  KV        `json:"annotations"`
-	StartsAt     time.Time `json:"startsAt"`
-	EndsAt       time.Time `json:"endsAt"`
-	GeneratorURL string    `json:"generatorURL"`
-	Fingerprint  string    `json:"fingerprint"`
+	Status       AlertStatus `json:"status"`
+	Labels       KV          `json:"labels"`
+	Annotations  KV          `json:"annotations"`
+	StartsAt     time.Time   `json:"startsAt"`
+	EndsAt       time.Time   `json:"endsAt"`
+	GeneratorURL string      `json:"generatorURL"`
+	Fingerprint  string      `json:"fingerprint"`
+	Channel      string
+	MessageTS    string
+	MessageBody  []slack.Block
 }
+
+type AlertStatus string
+
+const (
+	AlertStatusFiring   AlertStatus = "firing"
+	AlertStatusResolved AlertStatus = "resolved"
+)
 
 // KV is a set of key/value string pairs.
 type KV map[string]string

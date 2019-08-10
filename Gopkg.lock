@@ -226,6 +226,14 @@
   version = "v1.0.1"
 
 [[projects]]
+  digest = "1:61332bb44d05257bbf0356d8400a8b30fe0b9fdc3b72b8b55661da8f0a4f39ae"
+  name = "github.com/mitchellh/hashstructure"
+  packages = ["."]
+  pruneopts = "UT"
+  revision = "a38c50148365edc8df43c1580c48fb2b3a1e9cd7"
+  version = "v1.0.0"
+
+[[projects]]
   digest = "1:53bc4cd4914cd7cd52139990d5170d6dc99067ae31c56530621b18b35fc30318"
   name = "github.com/mitchellh/mapstructure"
   packages = ["."]
@@ -536,6 +544,7 @@
     "github.com/aws/aws-sdk-go/aws/session",
     "github.com/aws/aws-sdk-go/service/s3",
     "github.com/globalsign/mgo/bson",
+    "github.com/mitchellh/hashstructure",
     "github.com/nlopes/slack",
     "github.com/prometheus/client_golang/api",
     "github.com/prometheus/client_golang/api/prometheus/v1",

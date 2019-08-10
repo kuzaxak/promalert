@@ -2,6 +2,7 @@ package main
 
 import (
 	"fmt"
+	"github.com/prometheus/prometheus/promql"
 	"image/color"
 	"io"
 	"log"
@@ -19,6 +20,41 @@ import (
 
 // Only show important part of metric name
 var labelText = regexp.MustCompile("{(.*)}")
+
+func GetPlotExpr(alertFormula string) []PlotExpr {
+	expr, _ := promql.ParseExpr(alertFormula)
+	if parenExpr, ok := expr.(*promql.ParenExpr); ok {
+		expr = parenExpr.Expr
+		log.Printf("Removing redundant brackets: %v", expr.String())
+	}
+
+	if binaryExpr, ok := expr.(*promql.BinaryExpr); ok {
+		var alertOperator string
+
+		switch binaryExpr.Op {
+		case promql.ItemLAND:
+			log.Printf("Logical condition, drawing sides separately")
+			return append(GetPlotExpr(binaryExpr.LHS.String()), GetPlotExpr(binaryExpr.RHS.String())...)
+		case promql.ItemLTE, promql.ItemLSS:
+			alertOperator = "<"
+		case promql.ItemGTE, promql.ItemGTR:
+			alertOperator = ">"
+		default:
+			log.Printf("Unexpected operator: %v", binaryExpr.Op.String())
+			alertOperator = ">"
+		}
+
+		alertLevel, _ := strconv.ParseFloat(binaryExpr.RHS.String(), 64)
+		return []PlotExpr{PlotExpr{
+			Formula:  binaryExpr.LHS.String(),
+			Operator: alertOperator,
+			Level:    alertLevel,
+		}}
+	} else {
+		log.Printf("Non binary excpression: %v", alertFormula)
+		return nil
+	}
+}
 
 func Plot(expr PlotExpr, queryTime time.Time, duration, resolution time.Duration, prometheusUrl string, alert Alert) io.WriterTo {
 	log.Printf("Querying Prometheus %s", expr.Formula)
