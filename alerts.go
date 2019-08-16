@@ -73,6 +73,7 @@ func (alert Alert) PostMessage() (string, string, []slack.Block) {
 	options := make([]slack.MsgOption, 0)
 
 	if alert.Status == AlertStatusFiring || alert.MessageTS == "" {
+		log.Print("Composing full message")
 		messageBlocks, err := ComposeMessageBody(
 			alert,
 			viper.GetString("message_template"),
@@ -85,8 +86,10 @@ func (alert Alert) PostMessage() (string, string, []slack.Block) {
 		options = append(options, slack.MsgOptionBlocks(messageBlocks...))
 		if alert.MessageTS != "" {
 			options = append(options, slack.MsgOptionBroadcast())
+			log.Print("Adding broadcast flag to message")
 		}
 	} else {
+		log.Print("Composing short update message")
 		messageBody, err := ComposeResolveUpdateBody(
 			alert,
 			viper.GetString("header_template"),
@@ -97,6 +100,7 @@ func (alert Alert) PostMessage() (string, string, []slack.Block) {
 	}
 
 	if alert.MessageTS != "" {
+		log.Printf("MessageTS founded, posting to thread: %s", alert.MessageTS)
 		options = append(options, slack.MsgOptionTS(alert.MessageTS))
 
 		updateBlocks := alert.MessageBody
