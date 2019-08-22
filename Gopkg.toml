@@ -54,6 +54,10 @@
   version = "1.4.0"
 
 [[constraint]]
+  name = "github.com/gin-gonic/gin"
+  version = "1.4.0"
+
+[[constraint]]
   branch = "master"
   name = "gonum.org/v1/plot"
 

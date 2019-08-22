@@ -2,9 +2,8 @@ package main
 
 import (
 	"fmt"
+	"github.com/gin-gonic/gin"
 	"github.com/spf13/viper"
-	"log"
-	"net/http"
 )
 
 func main() {
@@ -19,10 +18,13 @@ func main() {
 	viper.AutomaticEnv()
 	viper.SetEnvPrefix("promalert")
 
-	http.HandleFunc("/healthz", healthz)
-	http.HandleFunc("/webhook", webhook)
+	r := gin.New()
+	r.Use(gin.LoggerWithWriter(gin.DefaultWriter, "/healthz"))
+	r.Use(gin.Recovery())
 
-	listenAddress := ":" + viper.GetString("http_port")
-	log.Printf("listening on: %v", listenAddress)
-	log.Fatal(http.ListenAndServe(listenAddress, nil))
+	r.GET("/healthz", healthz)
+	r.POST("/webhook", webhook)
+
+	err = r.Run(":" + viper.GetString("http_port"))
+	panic(fmt.Errorf("Cant start web server: %s \n", err))
 }

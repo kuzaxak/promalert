@@ -9,23 +9,23 @@ import (
 type HookMessage struct {
 	Version           string  `json:"version"`
 	GroupKey          string  `json:"groupKey"`
-	Status            string  `json:"status"`
+	Status            string  `json:"status" binding:"required"`
 	Receiver          string  `json:"receiver"`
 	GroupLabels       KV      `json:"groupLabels"`
 	CommonLabels      KV      `json:"commonLabels"`
 	CommonAnnotations KV      `json:"commonAnnotations"`
 	ExternalURL       string  `json:"externalURL"`
-	Alerts            []Alert `json:"alerts"`
+	Alerts            []Alert `json:"alerts" binding:"required"`
 }
 
 // Alert holds one alert for notification templates.
 type Alert struct {
-	Status       AlertStatus `json:"status"`
+	Status       AlertStatus `json:"status" binding:"required"`
 	Labels       KV          `json:"labels"`
 	Annotations  KV          `json:"annotations"`
-	StartsAt     time.Time   `json:"startsAt"`
+	StartsAt     time.Time   `json:"startsAt" binding:"required"`
 	EndsAt       time.Time   `json:"endsAt"`
-	GeneratorURL string      `json:"generatorURL"`
+	GeneratorURL string      `json:"generatorURL" binding:"required"`
 	Fingerprint  string      `json:"fingerprint"`
 	Channel      string
 	MessageTS    string

@@ -21,13 +21,17 @@ func (alert Alert) Hash() string {
 	return strconv.FormatUint(hash, 10)
 }
 
-func (alert Alert) GeneratePictures() []SlackImage {
+func (alert Alert) GeneratePictures() ([]SlackImage, error) {
 	generatorUrl, err := url.Parse(alert.GeneratorURL)
 	if err != nil {
-		panic(err)
+		return nil, err
 	}
 
-	generatorQuery, _ := url.ParseQuery(generatorUrl.RawQuery)
+	generatorQuery, err := url.ParseQuery(generatorUrl.RawQuery)
+	if err != nil {
+		return nil, err
+	}
+
 	var alertFormula string
 	for key, param := range generatorQuery {
 		if key == "g0.expr" {
@@ -43,7 +47,7 @@ func (alert Alert) GeneratePictures() []SlackImage {
 	var images []SlackImage
 
 	for _, expr := range plotExpression {
-		plot := Plot(
+		plot, err := Plot(
 			expr,
 			queryTime,
 			duration,
@@ -51,9 +55,14 @@ func (alert Alert) GeneratePictures() []SlackImage {
 			viper.GetString("prometheus_url"),
 			alert,
 		)
+		if err != nil {
+			return nil, fmt.Errorf("Plotter error: %v\n", err)
+		}
 
 		publicURL, err := UploadFile(viper.GetString("s3_bucket"), viper.GetString("s3_region"), plot)
-		fatal(err, "failed to upload")
+		if err != nil {
+			return nil, fmt.Errorf("S3 error: %v\n", err)
+		}
 		log.Printf("Graph uploaded, URL: %s", publicURL)
 
 		images = append(images, SlackImage{
@@ -62,10 +71,10 @@ func (alert Alert) GeneratePictures() []SlackImage {
 		})
 	}
 
-	return images
+	return images, nil
 }
 
-func (alert Alert) PostMessage() (string, string, []slack.Block) {
+func (alert Alert) PostMessage() (string, string, []slack.Block, error) {
 	log.Printf("Alert: status=%s,Labels=%v,Annotations=%v", alert.Status, alert.Labels, alert.Annotations)
 	severity := alert.Labels["severity"]
 	log.Printf("no action on severity: %s", severity)
@@ -74,13 +83,20 @@ func (alert Alert) PostMessage() (string, string, []slack.Block) {
 
 	if alert.Status == AlertStatusFiring || alert.MessageTS == "" {
 		log.Print("Composing full message")
+		images, err := alert.GeneratePictures()
+		if err != nil {
+			return "", "", nil, err
+		}
+
 		messageBlocks, err := ComposeMessageBody(
 			alert,
 			viper.GetString("message_template"),
 			viper.GetString("header_template"),
-			alert.GeneratePictures()...,
+			images...,
 		)
-		fatal(err, "failed to generate slack message")
+		if err != nil {
+			return "", "", nil, err
+		}
 
 		alert.MessageBody = messageBlocks
 		options = append(options, slack.MsgOptionBlocks(messageBlocks...))
@@ -90,12 +106,20 @@ func (alert Alert) PostMessage() (string, string, []slack.Block) {
 		}
 	} else {
 		log.Print("Composing short update message")
+		images, err := alert.GeneratePictures()
+		if err != nil {
+			return "", "", nil, err
+		}
+
 		messageBody, err := ComposeResolveUpdateBody(
 			alert,
 			viper.GetString("header_template"),
-			alert.GeneratePictures()...,
+			images...,
 		)
-		fatal(err, "failed to generate slack message")
+		if err != nil {
+			return "", "", nil, err
+		}
+
 		options = append(options, messageBody)
 	}
 
@@ -105,7 +129,10 @@ func (alert Alert) PostMessage() (string, string, []slack.Block) {
 
 		updateBlocks := alert.MessageBody
 		d, err := ComposeUpdateFooter(alert, viper.GetString("footer_template"))
-		fatal(err, "failed to generate slack message")
+		if err != nil {
+			return "", "", nil, err
+		}
+
 		updateBlocks = append(updateBlocks, d...)
 
 		respChannel, respTimestamp, err := SlackUpdateAlertMessage(
@@ -114,7 +141,10 @@ func (alert Alert) PostMessage() (string, string, []slack.Block) {
 			alert.MessageTS,
 			slack.MsgOptionBlocks(updateBlocks...),
 		)
-		fatal(err, "failed to send slack message")
+		if err != nil {
+			return "", "", nil, err
+		}
+
 		log.Printf("Slack message updated, channel: %s thread: %s", respChannel, respTimestamp)
 	}
 
@@ -129,10 +159,13 @@ func (alert Alert) PostMessage() (string, string, []slack.Block) {
 		channel,
 		options...,
 	)
-	fatal(err, "failed to send slack message")
+	if err != nil {
+		return "", "", nil, err
+	}
+
 	log.Printf("Slack message sended, channel: %s thread: %s", respChannel, respTimestamp)
 
-	return respChannel, respTimestamp, alert.MessageBody
+	return respChannel, respTimestamp, alert.MessageBody, nil
 }
 
 func (alert Alert) GetPlotTimeRange() (time.Time, time.Duration) {

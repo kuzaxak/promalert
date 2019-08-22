@@ -56,7 +56,7 @@ func GetPlotExpr(alertFormula string) []PlotExpr {
 	}
 }
 
-func Plot(expr PlotExpr, queryTime time.Time, duration, resolution time.Duration, prometheusUrl string, alert Alert) io.WriterTo {
+func Plot(expr PlotExpr, queryTime time.Time, duration, resolution time.Duration, prometheusUrl string, alert Alert) (io.WriterTo, error) {
 	log.Printf("Querying Prometheus %s", expr.Formula)
 	metrics, err := Metrics(
 		prometheusUrl,
@@ -65,7 +65,9 @@ func Plot(expr PlotExpr, queryTime time.Time, duration, resolution time.Duration
 		duration,
 		resolution,
 	)
-	fatal(err, "failed to get metrics")
+	if err != nil {
+		return nil, err
+	}
 
 	var selectedMetrics model.Matrix
 	var founded bool
@@ -97,9 +99,11 @@ func Plot(expr PlotExpr, queryTime time.Time, duration, resolution time.Duration
 
 	log.Printf("Creating plot: %s", alert.Annotations["summary"])
 	plottedMetric, err := PlotMetric(selectedMetrics, expr.Level, expr.Operator)
-	fatal(err, "failed to create plot")
+	if err != nil {
+		return nil, err
+	}
 
-	return plottedMetric
+	return plottedMetric, nil
 }
 
 func PlotMetric(metrics model.Matrix, level float64, direction string) (io.WriterTo, error) {
@@ -149,7 +153,7 @@ func PlotMetric(metrics model.Matrix, level float64, direction string) (io.Write
 			if fs == "NaN" {
 				_, err := drawLine(data, colors, s, paletteSize, p, metrics, sample)
 				if err != nil {
-					log.Panic(err)
+					return nil, err
 				}
 
 				data = make(plotter.XYs, 0)
@@ -180,7 +184,7 @@ func PlotMetric(metrics model.Matrix, level float64, direction string) (io.Write
 
 	poly, err := plotter.NewPolygon(polygonPoints)
 	if err != nil {
-		log.Panic(err)
+		return nil, err
 	}
 	poly.Color = color.NRGBA{R: 255, A: 40}
 	poly.LineStyle.Color = color.NRGBA{R: 0, A: 0}
