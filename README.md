@@ -4,19 +4,28 @@ Yet another [Prometheus](https://prometheus.io/) Alertmanager webhook processor 
 ## How it works 
 Receive webhook from Alertmanager, draw images from alert expression, upload pictures to S3 bucket, generate public links, send a notification to Slack. 
 
+## Why pormalert?
+
+Standard prometheus slack receiver cant use threads and draw graphs from alert.
+
+Main features: 
+* Threads to keep alert channel informative
+* Updating init firing message, mark it as resolved
+* Graph rendering with metric and alert level
+
 ### Message logic
 
-Post the new message in case when we can find a reference in the history. 
+Post the new message in case when we can find a reference in the history [example](docs/images/nan_points_in_metric_graph.png). 
 
 Otherwise, based on the status of the message, we apply the following logic:
 
 _Status = Firing_
 
-Post full message to thread with broadcasting. Set refiring footer to last known firing message. Store link to this message in memory (next resolving updates will edit this message).
+Post full message to thread with broadcasting. Set refiring footer to last known firing message. Store link to this message in memory (next resolving updates will edit this message) [example](docs/images/refired_message.png).
 
 _Status = Resolved_
 
-Post short message (header + images) to thread. Update footer of last fired message. 
+Post short message (header + images) to thread [example](docs/images/resolved_thread.png). Update footer of last fired message [example](docs/images/resolved_init_maessage.png). 
 
 ## Installation
 
@@ -104,7 +113,7 @@ Footer template:
 
 Rendered message:
 
-![Demo Message](images/default_message.png)
+![Demo Message](docs/images/default_message.png)
 
 
 ## Build 
