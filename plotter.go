@@ -145,6 +145,11 @@ func PlotMetric(metrics model.Matrix, level float64, direction string) (io.Write
 	for s, sample := range metrics {
 		data := make(plotter.XYs, len(sample.Values))
 		for i, v := range sample.Values {
+			fs := v.Value.String()
+			if fs == "NaN" {
+				continue
+			}
+
 			data[i].X = float64(v.Timestamp.Unix())
 			f, err := strconv.ParseFloat(v.Value.String(), 64)
 			if err != nil {
