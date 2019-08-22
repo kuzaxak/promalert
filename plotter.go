@@ -143,35 +143,30 @@ func PlotMetric(metrics model.Matrix, level float64, direction string) (io.Write
 	var lastEvalValue float64
 
 	for s, sample := range metrics {
-		data := make(plotter.XYs, len(sample.Values))
-		for i, v := range sample.Values {
+		data := make(plotter.XYs, 0)
+		for _, v := range sample.Values {
 			fs := v.Value.String()
 			if fs == "NaN" {
+				_, err := drawLine(data, colors, s, paletteSize, p, metrics, sample)
+				if err != nil {
+					log.Panic(err)
+				}
+
+				data = make(plotter.XYs, 0)
 				continue
 			}
 
-			data[i].X = float64(v.Timestamp.Unix())
-			f, err := strconv.ParseFloat(v.Value.String(), 64)
+			f, err := strconv.ParseFloat(fs, 64)
 			if err != nil {
 				return nil, fmt.Errorf("sample value not float: %s", v.Value.String())
 			}
-			data[i].Y = f
+			data = append(data, plotter.XY{X: float64(v.Timestamp.Unix()), Y: f})
 			lastEvalValue = f
 		}
 
-		l, err := plotter.NewLine(data)
+		_, err := drawLine(data, colors, s, paletteSize, p, metrics, sample)
 		if err != nil {
-			return nil, fmt.Errorf("failed to create line: %v", err)
-		}
-		l.LineStyle.Width = vg.Points(1)
-		l.LineStyle.Color = colors[s%paletteSize]
-
-		p.Add(l)
-		if len(metrics) > 1 {
-			m := labelText.FindStringSubmatch(sample.Metric.String())
-			if m != nil {
-				p.Legend.Add(m[1], l)
-			}
+			return nil, err
 		}
 	}
 
@@ -222,4 +217,28 @@ func PlotMetric(metrics model.Matrix, level float64, direction string) (io.Write
 	plotterCanvas.FillText(evalTextStyle, vg.Point{X: trX(p.X.Max) - 6*vg.Millimeter, Y: trY(lastEvalValue)}, evalText)
 
 	return c, nil
+}
+
+func drawLine(data plotter.XYs, colors []color.Color, s int, paletteSize int, p *plot.Plot, metrics model.Matrix, sample *model.SampleStream) (*plotter.Line, error) {
+	var l *plotter.Line
+	var err error
+	if len(data) > 0 {
+		l, err = plotter.NewLine(data)
+		if err != nil {
+			return &plotter.Line{}, fmt.Errorf("failed to create line: %v", err)
+		}
+
+		l.LineStyle.Width = vg.Points(1)
+		l.LineStyle.Color = colors[s%paletteSize]
+
+		p.Add(l)
+		if len(metrics) > 1 {
+			m := labelText.FindStringSubmatch(sample.Metric.String())
+			if m != nil {
+				p.Legend.Add(m[1], l)
+			}
+		}
+	}
+
+	return l, nil
 }
