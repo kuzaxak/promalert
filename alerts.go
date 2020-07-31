@@ -2,13 +2,14 @@ package main
 
 import (
 	"fmt"
-	"github.com/mitchellh/hashstructure"
-	"github.com/nlopes/slack"
-	"github.com/spf13/viper"
 	"log"
 	"net/url"
 	"strconv"
 	"time"
+
+	"github.com/mitchellh/hashstructure"
+	"github.com/slack-go/slack"
+	"github.com/spf13/viper"
 )
 
 func (alert Alert) Hash() string {

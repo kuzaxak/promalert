@@ -2,11 +2,12 @@ package main
 
 import (
 	"bytes"
-	"github.com/nlopes/slack"
-	"github.com/spf13/cast"
 	"strings"
 	"text/template"
 	"time"
+
+	"github.com/slack-go/slack"
+	"github.com/spf13/cast"
 )
 
 func SlackSendAlertMessage(token, channel string, messageOptions ...slack.MsgOption) (string, string, error) {
